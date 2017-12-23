@@ -1,0 +1,181 @@
+<canvas id="myCanvas" width="600" height="600"
+        style="position: fixed; top: 50%; left: 50%; -webkit-transform: translate(-50%, -50%); transform: translate(-50%, -50%);">
+</canvas>
+
+<script>
+  var canvas       = document.getElementById("myCanvas");
+  var ctx          = canvas.getContext("2d");
+  var canvasCenter = {x: 300, y: 300};
+  var canvasRadius = 500;
+  var bullets      = [];
+  var astroids     = [];
+
+  var ship = {
+    tip:             {x: 0,   y: -15},
+    leftWing:        {x: -15, y: 25},
+    rightWing:       {x: 15,  y: 25},
+    center:          {x: 0,   y: 10},
+    collisionRadius: 25,
+    rotation:        0,
+
+    draw: function() {
+      ctx.fillStyle = "white";
+      ctx.save();
+      ctx.translate(canvasCenter.x, canvasCenter.y);
+      ctx.rotate(this.rotation * Math.PI / 180);
+      ctx.beginPath();
+      ctx.moveTo(this.tip.x, this.tip.y);
+      ctx.lineTo(this.leftWing.x, this.leftWing.y);
+      ctx.lineTo(this.center.x, this.center.y);
+      ctx.lineTo(this.rightWing.x, this.rightWing.y);
+      ctx.lineTo(this.tip.x, this.tip.y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    },
+
+    rotateL: function() { this.rotate(-5) },
+    rotateR: function() { this.rotate(5) },
+
+    rotate: function(degrees) {
+      this.rotation += degrees;
+      this.rotation %= 360;
+      if (0 > this.rotation) { this.rotation += 360 }
+    },
+
+    shoot: function() {
+      var bullet = {
+        rotation: ship.rotation,
+        radius:   5,
+        center:   {x: this.tip.x, y: this.tip.y - 5},
+
+        draw: function() {
+          console.log("bullet rotation [" + this.rotation + "] center [x: " + this.center.x + ", y: " + this.center.y + "]");
+
+          ctx.fillStyle = "white";
+          ctx.save();
+          ctx.translate(canvasCenter.x, canvasCenter.y);
+          ctx.rotate(this.rotation * Math.PI / 180);
+          ctx.beginPath();
+          ctx.arc(this.center.x, this.center.y, bullet.radius, 0, Math.PI * 2, true);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        },
+
+        move: function() {
+          this.center.y -= bullet.radius * 2;
+          if (this.center.y + bullet.radius < -canvasRadius) { bullets.splice(bullets.indexOf(this), 1) }
+        },
+
+        collisionDetected: function(astroid) {
+          if (this.rotation + 5 >= astroid.rotation && this.rotation - 5 <= astroid.rotation) {
+            var dx = this.center.x - astroid.center.x;
+            var dy = this.center.y - astroid.center.y;
+            var distance = Math.sqrt(dx * dx + dy * dy);
+
+            return distance < bullet.radius + astroid.radius;
+          }
+
+          return false;
+        }
+      };
+
+      bullet.draw();
+      bullets.push(bullet);
+    },
+
+    collisionDetected: function(astroid) {
+      var dx = this.center.x - astroid.center.x;
+      var dy = this.center.y - astroid.center.y;
+      var distance = Math.sqrt(dx * dx + dy * dy);
+
+      return distance < this.collisionRadius + astroid.radius;
+    }
+  };
+
+  var addAstroid = function() {
+    var astroid = {
+      rotation: Math.floor(Math.random() * 361),
+      center:   {x: 0, y: -canvasRadius},
+      radius:   10,
+
+      draw: function() {
+        ctx.fillStyle = "white";
+        ctx.save();
+        ctx.translate(canvasCenter.x, canvasCenter.y);
+        ctx.rotate(this.rotation * Math.PI / 180);
+        ctx.beginPath();
+        ctx.arc(this.center.x, this.center.y, this.radius, 0, Math.PI * 2, true);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      },
+
+      move: function() {
+        this.center.y += this.radius * 2;
+        if (this.center.y - this.radius > canvasRadius) { astroids.splice(astroids.indexOf(this), 1) }
+      }
+    };
+
+    astroids.push(astroid);
+  };
+
+  var clear = function() {
+    ctx.fillStyle = "black";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  };
+
+  var draw = function() {
+    clear();
+    ship.draw();
+    bullets.forEach(function(b) { b.draw(); });
+    astroids.forEach(function(a) { a.draw(); });
+  };
+
+  document.addEventListener('keydown', function(e) {
+    if (32 === e.keyCode) {
+      ship.shoot();
+    } else if (37 === e.keyCode) {
+      ship.rotateL();
+      draw();
+    } else if (39 === e.keyCode) {
+      ship.rotateR();
+      draw();
+    }
+  });
+
+  var i = 0;
+  var interval = setInterval(function() {
+    bullets.forEach(function(b) { b.move(); });
+    if (i % 10 === 0) { astroids.forEach(function(a) { a.move(); })}
+    if (i++ % 50 === 0) { addAstroid() }
+    draw();
+    detectCollisions();
+  }, 100);
+
+  var detectCollisions = function() {
+    var astroidsToRemove = [];
+    var bulletsToRemove = [];
+    astroids.some(function(a) {
+      if (ship.collisionDetected(a)) {
+        alert('Your ship went B00m!');
+        clearInterval(interval);
+        return true;
+      }
+
+      bullets.some(function(b) {
+        if (b.collisionDetected(a)) {
+          astroidsToRemove.push(a);
+          bulletsToRemove.push(b);
+          return true;
+        }
+      });
+    });
+
+    astroidsToRemove.forEach(function(a) { astroids.splice(astroids.indexOf(a), 1)});
+    bulletsToRemove.forEach(function(b) { bullets.splice(bullets.indexOf(b), 1)});
+  };
+
+  draw();
+</script>
