@@ -1,181 +1,236 @@
-<canvas id="myCanvas" width="600" height="600"
+<!--
+  The canvas for our astroids game.
+
+  The canvas is called 'astroidsCanvas' with a fixed-width of 600px by 600px. It is also centered in the middle of the
+  browser.
+-->
+<canvas id="astroidsCanvas" width="600" height="600"
         style="position: fixed; top: 50%; left: 50%; -webkit-transform: translate(-50%, -50%); transform: translate(-50%, -50%);">
 </canvas>
 
+<!--
+  All the logic for our astroids game lives within this script tag (javascript).
+-->
 <script>
-  var canvas       = document.getElementById("myCanvas");
-  var ctx          = canvas.getContext("2d");
-  var canvasCenter = {x: 300, y: 300};
-  var canvasRadius = 500;
-  var bullets      = [];
-  var astroids     = [];
+  var canvas       = document.getElementById("astroidsCanvas");   // provides access to our canvas
+  var ctx          = canvas.getContext("2d");   // provides access to the two-dimensional context of our canvas
+  var canvasCenter = {x: 300, y: 300};    // the center of our canvas
+  var canvasRadius = 500;   // the entire play area is a circle with a radius of 500px form the canvas center
+  var bullets      = [];    // the bullets that are currently being tracked in our play area
+  var astroids     = [];    // the astroids that are currently being tracked in our play area
 
+  // our ship, in javascript this is considered JSON (javascript object notation)
   var ship = {
-    tip:             {x: 0,   y: -15},
-    leftWing:        {x: -15, y: 25},
-    rightWing:       {x: 15,  y: 25},
-    center:          {x: 0,   y: 10},
-    collisionRadius: 25,
-    rotation:        0,
+    tip:             {x: 0,   y: -15},  // property that represents the tip of the ship
+    leftWing:        {x: -15, y: 25},   // property that represents the tip of the left wing of the ship
+    rightWing:       {x: 15,  y: 25},   // property that represents the tip of the right wing of the ship
+    center:          {x: 0,   y: 10},   // property that represents the center of the ship
+    collisionRadius: 25,                // property that represents a circle surrounding the ship for collision detection
+    rotation:        0,                 // property that represents the rotation angle of the ship (in degrees)
 
+    /** Draws the ship on the canvas */
     draw: function() {
-      ctx.fillStyle = "white";
-      ctx.save();
-      ctx.translate(canvasCenter.x, canvasCenter.y);
-      ctx.rotate(this.rotation * Math.PI / 180);
-      ctx.beginPath();
-      ctx.moveTo(this.tip.x, this.tip.y);
-      ctx.lineTo(this.leftWing.x, this.leftWing.y);
-      ctx.lineTo(this.center.x, this.center.y);
-      ctx.lineTo(this.rightWing.x, this.rightWing.y);
-      ctx.lineTo(this.tip.x, this.tip.y);
-      ctx.closePath();
-      ctx.fill();
-      ctx.restore();
+      ctx.fillStyle = "white";    // our ship is white
+      ctx.save();   // save the current coordinates so we can restore them after we draw the ship
+      ctx.translate(canvasCenter.x, canvasCenter.y);  // change the coordinates to start at the center of the canvas
+      ctx.rotate(this.rotation * Math.PI / 180);      // rotate the canvas to our current ship rotation angle
+      ctx.beginPath();                                // start drawing the ship
+      ctx.moveTo(this.tip.x, this.tip.y);             // start at the tip
+      ctx.lineTo(this.leftWing.x, this.leftWing.y);   // draw a line to the tip of the left wing
+      ctx.lineTo(this.center.x, this.center.y);       // draw a line to the center
+      ctx.lineTo(this.rightWing.x, this.rightWing.y); // draw a line to the tip of the right wing
+      ctx.lineTo(this.tip.x, this.tip.y);             // draw a line back to the tip
+      ctx.closePath();                                // finish the drawing of the ship
+      ctx.fill();                                     // fill the ship white
+      ctx.restore();  // restore the original coordinates of the canvas
     },
 
+    /** Change the rotation angle of the ship by negative 5 degrees */
     rotateL: function() { this.rotate(-5) },
+
+    /** Change the rotation angle of the ship by positive 5 degrees */
     rotateR: function() { this.rotate(5) },
 
+    /**
+     * Rotates the ship by the number of degrees
+     *
+     * @param {int} degrees - the number of degrees to rotate the ship
+     */
     rotate: function(degrees) {
-      this.rotation += degrees;
-      this.rotation %= 360;
-      if (0 > this.rotation) { this.rotation += 360 }
+      this.rotation += degrees; // add the current degrees to rotation
+      this.rotation %= 360;     // we don't want to go higher than 360 so we 'modulus' rotation by 360
+      if (0 > this.rotation) { this.rotation += 360 } // we also don't want to go negative so we add 360 if negative
     },
 
+    /** Shoots a bullet from the ship */
     shoot: function() {
-      var bullet = {
-        rotation: ship.rotation,
-        radius:   5,
-        center:   {x: this.tip.x, y: this.tip.y - 5},
-
-        draw: function() {
-          console.log("bullet rotation [" + this.rotation + "] center [x: " + this.center.x + ", y: " + this.center.y + "]");
-
-          ctx.fillStyle = "white";
-          ctx.save();
-          ctx.translate(canvasCenter.x, canvasCenter.y);
-          ctx.rotate(this.rotation * Math.PI / 180);
-          ctx.beginPath();
-          ctx.arc(this.center.x, this.center.y, bullet.radius, 0, Math.PI * 2, true);
-          ctx.closePath();
-          ctx.fill();
-          ctx.restore();
-        },
-
-        move: function() {
-          this.center.y -= bullet.radius * 2;
-          if (this.center.y + bullet.radius < -canvasRadius) { bullets.splice(bullets.indexOf(this), 1) }
-        },
-
-        collisionDetected: function(astroid) {
-          if (this.rotation + 5 >= astroid.rotation && this.rotation - 5 <= astroid.rotation) {
-            var dx = this.center.x - astroid.center.x;
-            var dy = this.center.y - astroid.center.y;
-            var distance = Math.sqrt(dx * dx + dy * dy);
-
-            return distance < bullet.radius + astroid.radius;
-          }
-
-          return false;
-        }
-      };
-
-      bullet.draw();
-      bullets.push(bullet);
+      var bullet = new Bullet();  // create a new bullet
+      bullet.draw();              // draw the new bullet on the screen
+      bullets.push(bullet);       // start tracking the bullet
     },
 
+    /**
+     * Checks to see if an astroid has collided with the ship.
+     *
+     * @param {Astroid} astroid - The astroid
+     * @returns {boolean} true if the astroid has collided with the ship, false otherwise
+     */
     collisionDetected: function(astroid) {
-      var dx = this.center.x - astroid.center.x;
-      var dy = this.center.y - astroid.center.y;
-      var distance = Math.sqrt(dx * dx + dy * dy);
+      var dx = this.center.x - astroid.center.x;    // distance of the ship center x axis to the astroid center x axis
+      var dy = this.center.y - astroid.center.y;    // distance of the ship center y axis to the astroid center y axis
+      var distance = Math.sqrt(dx * dx + dy * dy);  // calculate the total distance
 
+      // if the distance is less than the radius of the ship plus the radius of the astroid then a collision has occurred
       return distance < this.collisionRadius + astroid.radius;
     }
   };
 
-  var addAstroid = function() {
-    var astroid = {
-      rotation: Math.floor(Math.random() * 361),
-      center:   {x: 0, y: -canvasRadius},
-      radius:   10,
-
-      draw: function() {
-        ctx.fillStyle = "white";
-        ctx.save();
-        ctx.translate(canvasCenter.x, canvasCenter.y);
-        ctx.rotate(this.rotation * Math.PI / 180);
-        ctx.beginPath();
-        ctx.arc(this.center.x, this.center.y, this.radius, 0, Math.PI * 2, true);
-        ctx.closePath();
-        ctx.fill();
-        ctx.restore();
-      },
-
-      move: function() {
-        this.center.y += this.radius * 2;
-        if (this.center.y - this.radius > canvasRadius) { astroids.splice(astroids.indexOf(this), 1) }
-      }
-    };
-
-    astroids.push(astroid);
-  };
-
-  var clear = function() {
-    ctx.fillStyle = "black";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-  };
-
+  /** Draws the canvas */
   var draw = function() {
-    clear();
-    ship.draw();
-    bullets.forEach(function(b) { b.draw(); });
-    astroids.forEach(function(a) { a.draw(); });
+    // clear the canvas
+    ctx.fillStyle = "black";                          // the canvas is black
+    ctx.fillRect(0, 0, canvas.width, canvas.height);  // fill the whole canvas black
+
+    ship.draw();                                      // draw the ship
+    bullets.forEach(function(b) { b.draw(); });       // draw the bullets
+    astroids.forEach(function(a) { a.draw(); });      // draw the astroids
   };
 
-  document.addEventListener('keydown', function(e) {
-    if (32 === e.keyCode) {
-      ship.shoot();
-    } else if (37 === e.keyCode) {
-      ship.rotateL();
-      draw();
-    } else if (39 === e.keyCode) {
-      ship.rotateR();
-      draw();
-    }
-  });
-
-  var i = 0;
-  var interval = setInterval(function() {
-    bullets.forEach(function(b) { b.move(); });
-    if (i % 10 === 0) { astroids.forEach(function(a) { a.move(); })}
-    if (i++ % 50 === 0) { addAstroid() }
-    draw();
-    detectCollisions();
-  }, 100);
-
+  /** Detects any collisions on the canvas */
   var detectCollisions = function() {
-    var astroidsToRemove = [];
-    var bulletsToRemove = [];
+    // loop through all the astroids to check for collisions
     astroids.some(function(a) {
-      if (ship.collisionDetected(a)) {
-        alert('Your ship went B00m!');
-        clearInterval(interval);
-        return true;
+      if (ship.collisionDetected(a)) {  // check if the astroid has collided with the ship
+        alert('Your ship went B00m!');  // tell the player that their ship has collided with an astroid
+        clearInterval(interval);        // stop the game
+        return true;                    // stop checking for collisions since the game has ended
       }
 
-      bullets.some(function(b) {
-        if (b.collisionDetected(a)) {
-          astroidsToRemove.push(a);
-          bulletsToRemove.push(b);
-          return true;
+      bullets.some(function(b) {        // loop through each bullet to check if they have collided with this astroid
+        if (b.collisionDetected(a)) {   // check if the bullet as collided with this astroid
+          astroids.splice(astroids.indexOf(a), 1);    // stop tracking the astroid
+          bullets.splice(bullets.indexOf(b), 1);      // stop tracking the bullet
+          return true;                  // since the astroid is now removed stop checking for collisions on this astroid
         }
       });
     });
-
-    astroidsToRemove.forEach(function(a) { astroids.splice(astroids.indexOf(a), 1)});
-    bulletsToRemove.forEach(function(b) { bullets.splice(bullets.indexOf(b), 1)});
   };
 
-  draw();
+  /**
+   * Creates a new Astroid.
+   * @constructor
+   */
+  function Astroid() {
+    return {
+      rotation: Math.floor(Math.random() * 361),  // random rotation angle from 0 - 360
+      center:   {x: 0, y: -canvasRadius},         // center of the astroid
+      radius:   10,                               // radius of the astroid
+
+      /** Draws the astroid on the canvas */
+      draw: function() {
+        ctx.fillStyle = "white";  // the astroid is white
+        ctx.save();     // save the current coordinates so we can restore them after we draw the astroid
+        ctx.translate(canvasCenter.x, canvasCenter.y);  // change the coordinates to start at the center of the canvas
+        ctx.rotate(this.rotation * Math.PI / 180);      // rotate the canvas to the astroid's rotation angle
+        ctx.beginPath();                                                          // start drawing the bullet
+        ctx.arc(this.center.x, this.center.y, this.radius, 0, Math.PI * 2, true); // draw the astroid
+        ctx.closePath();                                                          // finished drawing the astroid
+        ctx.fill();                                                               // fill the astroid white
+        ctx.restore();  // restore the original coordinates of the canvas
+      },
+
+      /** Moves this bullet on the canvas */
+      move: function() {
+        this.center.y += this.radius * 2; // moves the center of the astroid by the astroid's diameter (2 * radius)
+
+        // if the astroid is outside of the play area then stop tracking the astroid
+        if (this.center.y - this.radius > canvasRadius) { astroids.splice(astroids.indexOf(this), 1) }
+      }
+    };
+  }
+
+  /**
+   * Creates a new Bullet.
+   * @constructor
+   */
+  function Bullet() {
+    return {
+      rotation: ship.rotation,  // the bullet will inherit the current ship's rotation angle
+      radius:   5,              // radius of the bullet
+      center:   {x: ship.tip.x, y: ship.tip.y - 5}, // the bullet is fired from the tip of the ship
+
+      /** Draws this bullet on the canvas */
+      draw: function() {
+        ctx.fillStyle = "white";  // the bullet is white
+        ctx.save();     // save the current coordinates so we can restore them after we draw the bullet
+        ctx.translate(canvasCenter.x, canvasCenter.y);  // change the coordinates to start at the center of the canvas
+        ctx.rotate(this.rotation * Math.PI / 180);      // rotate the canvas to the bullet's rotation angle
+        ctx.beginPath();                                                            // start drawing the bullet
+        ctx.arc(this.center.x, this.center.y, this.radius, 0, Math.PI * 2, true);   // draw the bullet
+        ctx.closePath();                                                            // finished drawing the bullet
+        ctx.fill();                                                                 // fill the bullet white
+        ctx.restore();  // restore the original coordinates of the canvas
+      },
+
+      /** Moves this bullet on the canvas */
+      move: function() {
+        this.center.y -= this.radius * 2; // moves the center of the bullet by the bullet's diameter (2 * radius)
+
+        // if the bullet is outside of the play area then stop tracking the bullet
+        if (this.center.y + this.radius < -canvasRadius) { bullets.splice(bullets.indexOf(this), 1) }
+      },
+
+      /**
+       * Checks to see if an astroid has collided with this bullet.
+       *
+       * @param {Astroid} astroid - The astroid
+       * @returns {boolean} true if the astroid has collided with this bullet, false otherwise
+       */
+      collisionDetected: function(astroid) {
+        // This is kind of a poor man's version of 2d collision:
+        //
+        //   We are checking if the rotation angle of this bullet is within +/- 5 degrees of the rotation angle of the
+        //   astroid. Since this is a fixed width canvas we can get away with this, but a real 2d collision
+        //   algorithm would need to translate the coordinate systems of the bullet to the astroid and then check for
+        //   a collision.
+        if (this.rotation + 5 >= astroid.rotation && this.rotation - 5 <= astroid.rotation) {
+          var dx = this.center.x - astroid.center.x;    // distance of the bullet center x axis to the astroid center x axis
+          var dy = this.center.y - astroid.center.y;    // distance of the bullet center y axis to the astroid center y axis
+          var distance = Math.sqrt(dx * dx + dy * dy);  // calculate the total distance
+
+          // if the distance is less than the radius of the bullet plus the radius of the astroid then a collision
+          //   has occurred
+          return distance < this.radius + astroid.radius;
+        }
+
+        return false; // the rotation angle was greater than +/- 5 degrees so no collision has occurred
+      }
+    };
+  }
+
+  // hook into the 'keydown' event on the canvas
+  document.addEventListener('keydown', function(e) {
+    if (32 === e.keyCode) {         // if the key down is the space bar
+      ship.shoot();                 //   shoot a bullet from the ship
+    } else if (37 === e.keyCode) {  // if the key down is the left arrow
+      ship.rotateL();               //   rotate the ship left
+      draw();                       //   redraw the canvas
+    } else if (39 === e.keyCode) {  // if the key down is the right arrow
+      ship.rotateR();               //   rotate the ship right
+      draw();                       //   redraw the canvas
+    }
+  });
+
+  var i = 0;  // variable to track the number of intervals that have occurred
+  var interval = setInterval(function() {   // on every 100 milliseconds do the following
+    bullets.forEach(function(b) { b.move(); });                       // every 100 milliseconds move every bullet
+    if (i % 10 === 0) { astroids.forEach(function(a) { a.move(); })}  // every second move every astroid
+    if (i++ % 50 === 0) { astroids.push(new Astroid()) }              // every 5 seconds create a new astroid
+
+    i %= 49;              // since we only need to track up to 50 we're going to modulus 49
+    draw();               // redraw the canvas every 100 milliseconds
+    detectCollisions();   // detect collisions every 100 milliseconds
+  }, 100);
+
+  draw();   // the initial draw of the canvas
 </script>

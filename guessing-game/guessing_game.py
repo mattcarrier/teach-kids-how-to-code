@@ -4,6 +4,39 @@
 from random import randint  # random number generator
 from sys import stdin       # access to stdin to read input from player
 
+
+def play_again():
+    """
+    Ask the player whether they want to 'play again'.
+
+    :return: True if they do, False otherwise
+    """
+
+    # ask if the player would like to play again
+    #
+    # a general unix principal is that a capitalized letter is a default,
+    #   so the player would not have to type in 'Y' to continue, they
+    #   would only need to press the 'enter' key
+    print("\nWould you like to play again? [Y/n]")
+
+    # if the player's answer starts with 'n' then stop playing
+    #
+    # we need to strip the newline and lowercase the whole
+    #   string, and then check if it starts with lowercase 'n'
+    response = stdin.readline().strip().lower()
+    if response.startswith("n"):
+        return False
+    # not response will return true if response is empty (default)
+    elif not response or response.startswith("y"):
+        return True
+
+    # if response is not empty and doesn't start with 'y' or 'n' then
+    #   ask the player again because we don't understand their response
+    #
+    # this is called 'recursion' when a function calls itself
+    return play_again()
+
+
 # loop until the player ends the game
 while True:
     # ask the player to guess a number from 1 to 10
@@ -26,12 +59,6 @@ while True:
     print("Number Picked: {}".format(random))
     print("You Guessed Right!" if guess == random else "You Guessed Wrong :-(")
 
-    # ask if the player would like to play again
-    print("\nWould you like to play again? [Y/n]")
-
-    # if the player's answer starts with 'n' then stop playing
-    #
-    # like above we need to strip the newline, then we're lower casing
-    #   the whole string and checking if it starts with lowercase 'n'
-    if stdin.readline().strip().lower().startswith("n"):
-        break   # break stops the 'while' loop above
+    # ask player if they would like to play again
+    if not play_again():
+        break
