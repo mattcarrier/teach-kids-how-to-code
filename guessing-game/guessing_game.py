@@ -39,15 +39,20 @@ def play_again():
 
 # loop until the player ends the game
 while True:
-    # ask the player to guess a number from 1 to 10
-    print("Guess a number from 1 - 10:")
+    guess = None
+    while not guess:
+        # ask the player to guess a number from 1 to 10
+        print("Guess a number from 1 - 10:")
 
-    # read the number guessed from the player into the variable 'guess'
-    #
-    # since stdin.readline() returns a string that ends in 'newline' we
-    #   need to strip the 'newline' and 'cast' the string to a number so
-    #   we can compare the player's number to the random number later on
-    guess = int(stdin.readline().strip())
+        # read the number guessed from the player into the variable 'guess'
+        #
+        # since stdin.readline() returns a string that ends in 'newline' we
+        #   need to strip the 'newline' and 'cast' the string to a number so
+        #   we can compare the player's number to the random number later on
+        try:
+            guess = int(stdin.readline().strip())
+        except:
+            print('what you entered is not an integer')
 
     # pick a random number from 1 - 10 into the variable random
     random = randint(1, 10)
